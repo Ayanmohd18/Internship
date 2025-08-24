@@ -1,8 +1,4 @@
 
-Iris Flower Species Classifier using K-Nearest Neighbors.
-
-
-
 # ================================
 #      1. IMPORT LIBRARIES
 # ================================
