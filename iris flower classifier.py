@@ -1,11 +1,7 @@
-# -*- coding: utf-8 -*-
-"""
+
 Iris Flower Species Classifier using K-Nearest Neighbors.
 
-This script loads the Iris dataset, visualizes the relationships between
-features, trains a KNN classifier, evaluates its performance, and uses it
-to predict the species of a new flower sample.
-"""
+
 
 # ================================
 #      1. IMPORT LIBRARIES
