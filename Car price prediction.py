@@ -1,119 +1,140 @@
-
-
-# Importing the Dependencies
+# ===============================
+#      LIBRARY IMPORTS
+# ===============================
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression, Lasso
-from sklearn import metrics
+from sklearn.metrics import r2_score
+from typing import Any, Dict
 
 # ===============================
-# Data Collection and Processing
+#      DATA PROCESSING
 # ===============================
 
-# loading the data from csv file to pandas dataframe
-car_dataset = pd.read_csv('car data.csv')
+def load_and_prepare_data(filepath: str) -> pd.DataFrame:
+    """
+    Loads data from a CSV file, inspects it, and encodes categorical columns.
 
-# inspecting the first 5 rows of the dataframe
-print(car_dataset.head())
+    Args:
+        filepath (str): The path to the car data CSV file.
 
-# checking the number of rows and columns
-print("Dataset shape:", car_dataset.shape)
-
-# getting some information about the dataset
-print(car_dataset.info())
-
-# checking the number of missing values
-print("Missing values:\n", car_dataset.isnull().sum())
-
-# checking the distribution of categorical data (✅ corrected column names)
-print("\nFuel_Type counts:\n", car_dataset.Fuel_Type.value_counts())
-print("\nSeller_Type counts:\n", car_dataset.Seller_Type.value_counts())
-print("\nTransmission counts:\n", car_dataset.Transmission.value_counts())
-
-# ===============================
-# Encoding the Categorical Data
-# ===============================
-
-# encoding "Fuel_Type" Column
-car_dataset.replace({'Fuel_Type': {'Petrol': 0, 'Diesel': 1, 'CNG': 2}}, inplace=True)
-
-# encoding "Seller_Type" Column (✅ corrected from Selling_type)
-car_dataset.replace({'Seller_Type': {'Dealer': 0, 'Individual': 1}}, inplace=True)
-
-# encoding "Transmission" Column
-car_dataset.replace({'Transmission': {'Manual': 0, 'Automatic': 1}}, inplace=True)
-
-print("\nData after encoding:\n", car_dataset.head())
-
-# ===============================
-# Splitting the data and Target
-# ===============================
-
-X = car_dataset.drop(['Car_Name', 'Selling_Price'], axis=1)
-Y = car_dataset['Selling_Price']
+    Returns:
+        pd.DataFrame: A preprocessed DataFrame ready for modeling.
+    """
+    print("--- 1. Data Loading and Preparation ---")
+    
+    # Load the dataset
+    vehicle_df = pd.read_csv(filepath)
+    print(f"Dataset loaded successfully with {vehicle_df.shape[0]} rows and {vehicle_df.shape[1]} columns.")
+    
+    # Check for missing values
+    if vehicle_df.isnull().sum().sum() == 0:
+        print("Data quality check passed: No missing values found.")
+    else:
+        print("Warning: Missing values detected.")
+        print(vehicle_df.isnull().sum())
+        
+    # Define encoding maps for categorical features
+    encoding_maps = {
+        'Fuel_Type': {'Petrol': 0, 'Diesel': 1, 'CNG': 2},
+        'Seller_Type': {'Dealer': 0, 'Individual': 1},
+        'Transmission': {'Manual': 0, 'Automatic': 1}
+    }
+    
+    # Apply the encoding
+    processed_df = vehicle_df.replace(encoding_maps)
+    print("Categorical features encoded into numerical format.\n")
+    
+    return processed_df
 
 # ===============================
-# Splitting Training and Test data
+#      MODELING & EVALUATION
 # ===============================
 
-X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.1, random_state=2)
+def plot_predictions(y_true: pd.Series, y_pred: pd.Series, model_name: str, data_split: str):
+    """
+    Generates a scatter plot to visualize model predictions against actual values.
+
+    Args:
+        y_true (pd.Series): The actual target values.
+        y_pred (pd.Series): The predicted values from the model.
+        model_name (str): The name of the regression model.
+        data_split (str): Indicates if the data is 'Training' or 'Test'.
+    """
+    plt.figure(figsize=(8, 6))
+    plt.scatter(y_true, y_pred, alpha=0.7, edgecolors='k', color='#3498db')
+    
+    # Add a 'Perfect Prediction' line for reference
+    perfect_line = [min(y_true.min(), y_pred.min()), max(y_true.max(), y_pred.max())]
+    plt.plot(perfect_line, perfect_line, color='red', linestyle='--', linewidth=2, label='Perfect Prediction')
+    
+    plt.title(f'{model_name}: Actual vs. Predicted Prices ({data_split} Set)', fontsize=15)
+    plt.xlabel('Actual Price (in Lakhs)', fontsize=12)
+    plt.ylabel('Predicted Price (in Lakhs)', fontsize=12)
+    plt.legend()
+    plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+    plt.show()
+
+def train_and_evaluate_regressor(model: Any, model_name: str, X_train, Y_train, X_test, Y_test):
+    """
+    Trains a given regression model, evaluates its performance, and visualizes the results.
+
+    Args:
+        model (Any): An instance of a scikit-learn regressor.
+        model_name (str): A user-friendly name for the model.
+        X_train, Y_train: Training data and labels.
+        X_test, Y_test: Testing data and labels.
+    """
+    print(f"--- Training and Evaluating: {model_name} ---")
+    
+    # Train the model
+    model.fit(X_train, Y_train)
+    
+    # Evaluate on Training Data
+    train_preds = model.predict(X_train)
+    train_r2 = r2_score(Y_train, train_preds)
+    print(f"Training R-squared (R²) Score: {train_r2:.4f}")
+    plot_predictions(Y_train, train_preds, model_name, 'Training')
+
+    # Evaluate on Test Data
+    test_preds = model.predict(X_test)
+    test_r2 = r2_score(Y_test, test_preds)
+    print(f"Test R-squared (R²) Score: {test_r2:.4f}\n")
+    plot_predictions(Y_test, test_preds, model_name, 'Test')
 
 # ===============================
-# 1. Linear Regression
+#        MAIN EXECUTION
 # ===============================
 
-lin_reg_model = LinearRegression()
-lin_reg_model.fit(X_train, Y_train)
+def main():
+    """
+    Main function to execute the car price prediction pipeline.
+    """
+    # Configure plot aesthetics
+    sns.set_style("whitegrid")
 
-# ---- Model Evaluation (Training Data)
-training_data_prediction = lin_reg_model.predict(X_train)
-train_r2 = metrics.r2_score(Y_train, training_data_prediction)
-print("\n[Linear Regression] Training R² Error:", train_r2)
+    # Step 1: Load and preprocess the data
+    car_data = load_and_prepare_data('car data.csv')
 
-plt.scatter(Y_train, training_data_prediction, color="blue")
-plt.xlabel("Actual Price")
-plt.ylabel("Predicted Price")
-plt.title("Linear Regression - Actual vs Predicted (Training)")
-plt.show()
+    # Step 2: Define features (X) and target (Y)
+    features = car_data.drop(['Car_Name', 'Selling_Price'], axis=1)
+    target = car_data['Selling_Price']
 
-# ---- Model Evaluation (Test Data)
-test_data_prediction = lin_reg_model.predict(X_test)
-test_r2 = metrics.r2_score(Y_test, test_data_prediction)
-print("[Linear Regression] Test R² Error:", test_r2)
+    # Step 3: Split the data into training and testing sets
+    X_train, X_test, Y_train, Y_test = train_test_split(features, target, test_size=0.1, random_state=42)
+    print("--- 2. Data Splitting ---")
+    print(f"Data split into training ({len(X_train)} samples) and test ({len(X_test)} samples) sets.\n")
 
-plt.scatter(Y_test, test_data_prediction, color="green")
-plt.xlabel("Actual Price")
-plt.ylabel("Predicted Price")
-plt.title("Linear Regression - Actual vs Predicted (Test)")
-plt.show()
+    # Step 4: Define and evaluate models
+    models_to_run: Dict[str, Any] = {
+        "Linear Regression": LinearRegression(),
+        "Lasso Regression": Lasso()
+    }
+    
+    for name, instance in models_to_run.items():
+        train_and_evaluate_regressor(instance, name, X_train, Y_train, X_test, Y_test)
 
-# ===============================
-# 2. Lasso Regression
-# ===============================
-
-lass_reg_model = Lasso()
-lass_reg_model.fit(X_train, Y_train)
-
-# ---- Model Evaluation (Training Data)
-training_data_prediction = lass_reg_model.predict(X_train)
-train_r2 = metrics.r2_score(Y_train, training_data_prediction)
-print("\n[Lasso Regression] Training R² Error:", train_r2)
-
-plt.scatter(Y_train, training_data_prediction, color="purple")
-plt.xlabel("Actual Price")
-plt.ylabel("Predicted Price")
-plt.title("Lasso Regression - Actual vs Predicted (Training)")
-plt.show()
-
-# ---- Model Evaluation (Test Data)
-test_data_prediction = lass_reg_model.predict(X_test)
-test_r2 = metrics.r2_score(Y_test, test_data_prediction)
-print("[Lasso Regression] Test R² Error:", test_r2)
-
-plt.scatter(Y_test, test_data_prediction, color="orange")
-plt.xlabel("Actual Price")
-plt.ylabel("Predicted Price")
-plt.title("Lasso Regression - Actual vs Predicted (Test)")
-plt.show()
+if __name__ == "__main__":
+    main()
